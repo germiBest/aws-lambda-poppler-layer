@@ -1,13 +1,13 @@
-FROM amazonlinux:2018.03
+FROM amazonlinux:2022.0.20220531.0
 
 SHELL ["/bin/bash", "-c"]
 
-ENV BUILD_DIR="/tmp/build"
+ENV BUILD_DIR="/var/tmp/build"
 ENV INSTALL_DIR="/opt"
 
 # Lock To Proper Release
 
-RUN sed -i 's/releasever=latest/releaserver=2018.03/' /etc/yum.conf
+# RUN sed -i 's/releasever=latest/releaserver=2018.03/' /etc/yum.conf
 
 # Create All The Necessary Build Directories
 
@@ -27,35 +27,37 @@ WORKDIR /tmp
 
 RUN set -xe \
     && yum makecache \
-    && yum groupinstall -y "Development Tools"  --setopt=group_package_types=mandatory,default \
-    && yum install -y libuuid-devel openssl-devel gcc72 gcc72-c++
+    && yum install -y libuuid-devel openssl-devel gcc gcc-c++ nasm python3 python3-devel boost xz tar gzip zlib zlib-devel automake libtool libtool-ltdl-devel git
+    # && yum groupinstall -y "Development Tools"  --setopt=group_package_types=mandatory,default \
+
+RUN ln -s /usr/bin/automake-1.16 /usr/bin/automake-1.15
 
 # Install CMake
 
 RUN  set -xe \
     && mkdir -p /tmp/cmake \
     && cd /tmp/cmake \
-    && curl -Ls  https://github.com/Kitware/CMake/releases/download/v3.16.3/cmake-3.16.3.tar.gz \
+    && curl -Ls  https://github.com/Kitware/CMake/releases/download/v3.23.2/cmake-3.23.2.tar.gz \
     | tar xzC /tmp/cmake --strip-components=1 \
     && sed -i '/"lib64"/s/64//' Modules/GNUInstallDirs.cmake \
     && ./bootstrap \
-    --prefix=/usr/local \ 
+    --prefix=/usr/local \
     --no-system-jsoncpp \
     --no-system-librhash \
     --no-system-curl \
-    && make \
+    && make -j 16 \
     && make install
 
 # Install NASM
 
-RUN  set -xe \
-    && mkdir -p /tmp/nasm \
-    && cd /tmp/nasm \
-    && curl -Ls  http://www.nasm.us/pub/nasm/releasebuilds/2.14.02/nasm-2.14.02.tar.xz \
-    | tar xJvC /tmp/nasm --strip-components=1 \
-    && ./configure --prefix=/usr/local \
-    && make \
-    && make install
+# RUN  set -xe \
+#     && mkdir -p /tmp/nasm \
+#     && cd /tmp/nasm \
+#     && curl -Ls  http://www.nasm.us/pub/nasm/releasebuilds/2.14.02/nasm-2.14.02.tar.xz \
+#     | tar xJvC /tmp/nasm --strip-components=1 \
+#     && ./configure --prefix=/usr/local \
+#     && make \
+#     && make install
 
 # Configure Default Compiler Variables
 
@@ -67,7 +69,7 @@ ENV LD_LIBRARY_PATH="${INSTALL_DIR}/lib64:${INSTALL_DIR}/lib"
 
 # Build LibXML2 (https://github.com/GNOME/libxml2/releases)
 
-ENV VERSION_XML2=2.9.10
+ENV VERSION_XML2=2.9.12
 ENV XML2_BUILD_DIR=${BUILD_DIR}/xml2
 
 RUN set -xe; \
@@ -98,6 +100,7 @@ RUN set -xe; \
     && cp xml2-config ${INSTALL_DIR}/bin/xml2-config
 
 # Install FreeType2 (https://github.com/aseprite/freetype2/releases)
+RUN echo "Installing FreeType2"
 
 ENV VERSION_FREETYPE2=2.10.1
 ENV FREETYPE2_BUILD_DIR=${BUILD_DIR}/freetype2
@@ -124,11 +127,12 @@ RUN set -xe; \
     --prefix=${INSTALL_DIR} \
     --with-sysroot=${INSTALL_DIR} \
     --enable-freetype-config  \
-    --disable-static \ 
-    && make \
+    --disable-static \
+    && make -j 16 \
     && make install
 
 # Install gperf
+RUN echo "Installing gperf"
 
 ENV VERSION_GPERF=3.1
 ENV GPERF_BUILD_DIR=${BUILD_DIR}/gperf
@@ -146,12 +150,13 @@ RUN set -xe; \
     LDFLAGS="-L${INSTALL_DIR}/lib64 -L${INSTALL_DIR}/lib" \
     ./configure  \
     --prefix=${INSTALL_DIR} \
-    && make \
+    && make -j 16 \
     && make install
 
 # Install Fontconfig (https://github.com/freedesktop/fontconfig/releases)
+RUN echo "Installing Fontconfig"
 
-ENV VERSION_FONTCONFIG=2.13.92
+ENV VERSION_FONTCONFIG=2.14.0
 ENV FONTCONFIG_BUILD_DIR=${BUILD_DIR}/fontconfig
 
 RUN set -xe; \
@@ -165,6 +170,7 @@ RUN set -xe; \
     rm -f src/fcobjshash.h
 
 RUN set -xe; \
+    PYTHON="/usr/bin/python3" \
     CFLAGS="" \
     CPPFLAGS="-I${INSTALL_DIR}/include  -I/usr/include" \
     LDFLAGS="-L${INSTALL_DIR}/lib64 -L${INSTALL_DIR}/lib" \
@@ -174,13 +180,15 @@ RUN set -xe; \
     --localstatedir=${INSTALL_DIR}/var \
     --prefix=${INSTALL_DIR} \
     --disable-docs \
+    --disable-docs \
     --enable-libxml2 \
-    && make \
+    && make -j 16 \
     && make install
 
-# Install Libjpeg-Turbo (https://github.com/libjpeg-turbo/libjpeg-turbo/releases)
+# # Install Libjpeg-Turbo (https://github.com/libjpeg-turbo/libjpeg-turbo/releases)
+RUN echo "Installing Libjpeg-Turbo"
 
-ENV VERSION_LIBJPEG=2.0.6
+ENV VERSION_LIBJPEG=2.1.3
 ENV LIBJPEG_BUILD_DIR=${BUILD_DIR}/libjpeg
 
 RUN set -xe; \
@@ -198,14 +206,15 @@ RUN set -xe; \
     -DCMAKE_BUILD_TYPE=RELEASE \
     -DENABLE_STATIC=FALSE \
     -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
-    -DCMAKE_INSTALL_DEFAULT_LIBDIR=lib \ 
+    -DCMAKE_INSTALL_DEFAULT_LIBDIR=lib \
     -DCMAKE_PREFIX_PATH=${INSTALL_DIR} \
-    && make \
+    && make -j 16 \
     && make install
 
-# Install OpenJPEG (https://github.com/uclouvain/openjpeg/releases)
+# # Install OpenJPEG (https://github.com/uclouvain/openjpeg/releases)
+RUN echo "Installing OpenJPEG"
 
-ENV VERSION_OPENJPEG2=2.3.1
+ENV VERSION_OPENJPEG2=2.5.0
 ENV OPENJPEG2_BUILD_DIR=${BUILD_DIR}/openjpeg2
 
 RUN set -xe; \
@@ -222,12 +231,13 @@ RUN set -xe; \
     cmake .. \
     -DCMAKE_BUILD_TYPE=RELEASE \
     -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
-    -DBUILD_STATIC_LIBS=OFF \ 
+    -DBUILD_STATIC_LIBS=OFF \
     -DCMAKE_PREFIX_PATH=${INSTALL_DIR} \
-    && make \
+    && make -j 16 \
     && make install
 
-# Install Libpng (https://github.com/glennrp/libpng/releases)
+# # Install Libpng (https://github.com/glennrp/libpng/releases)
+RUN echo "Installing Libpng"
 
 ENV VERSION_OPENPNG=1.6.37
 ENV OPENPNG_BUILD_DIR=${BUILD_DIR}/libpng
@@ -245,13 +255,14 @@ RUN set -xe; \
     LDFLAGS="-L${INSTALL_DIR}/lib64 -L${INSTALL_DIR}/lib" \
     ./configure  \
     --prefix=${INSTALL_DIR} \
-    --disable-static \ 
-    && make \
+    --disable-static \
+    && make -j 16 \
     && make install
 
-# Install LibTIFF (http://download.osgeo.org/libtiff)
+# # Install LibTIFF (http://download.osgeo.org/libtiff)
+RUN echo "Installing LibTIFF"
 
-ENV VERSION_LIBTIFF=4.1.0
+ENV VERSION_LIBTIFF=4.4.0
 ENV LIBTIFF_BUILD_DIR=${BUILD_DIR}/tiff
 
 RUN set -xe; \
@@ -267,11 +278,12 @@ RUN set -xe; \
     LDFLAGS="-L${INSTALL_DIR}/lib64 -L${INSTALL_DIR}/lib" \
     ./configure  \
     --prefix=${INSTALL_DIR} \
-    --disable-static \ 
-    && make \
+    --disable-static \
+    && make -j 16 \
     && make install
 
 # Install Pixman (https://www.cairographics.org/releases)
+RUN echo "Installing Pixman"
 
 ENV VERSION_PIXMAN=0.40.0
 ENV PIXMAN_BUILD_DIR=${BUILD_DIR}/pixman
@@ -290,13 +302,16 @@ RUN set -xe; \
     CFLAGS="" \
     CPPFLAGS="-I${INSTALL_DIR}/include  -I/usr/include" \
     LDFLAGS="-L${INSTALL_DIR}/lib64 -L${INSTALL_DIR}/lib" \
-    ./configure  \
+    && autoreconf \
+    && automake
+RUN ./configure  \
     --prefix=${INSTALL_DIR} \
-    --disable-static \ 
-    && make \
+    --disable-static \
+    && make -j 16 \
     && make install
 
 # Install Cairo (http://www.linuxfromscratch.org/blfs/view/svn/x/cairo.html)
+RUN echo "Installing Cairo"
 
 ENV VERSION_CAIRO=1.16.0
 ENV CAIRO_BUILD_DIR=${BUILD_DIR}/cairo
@@ -312,16 +327,19 @@ RUN set -xe; \
     CFLAGS="" \
     CPPFLAGS="-I${INSTALL_DIR}/include  -I/usr/include" \
     LDFLAGS="-L${INSTALL_DIR}/lib64 -L${INSTALL_DIR}/lib" \
-    ./configure  \
+    autoreconf \
+    && automake \
+    && ./configure  \
     --prefix=${INSTALL_DIR} \
-    --disable-static \ 
-    --enable-tee \ 
-    && make \
+    --disable-static \
+    --enable-tee \
+    && make -j 16 \
     && make install
 
 # Install Little CMS (https://downloads.sourceforge.net/lcms)
+RUN echo "Installing Little CMS"
 
-ENV VERSION_LCMS=2-2.11
+ENV VERSION_LCMS=2-2.13.1
 ENV LCMS_BUILD_DIR=${BUILD_DIR}/lcms
 
 RUN set -xe; \
@@ -337,13 +355,15 @@ RUN set -xe; \
     LDFLAGS="-L${INSTALL_DIR}/lib64 -L${INSTALL_DIR}/lib" \
     ./configure  \
     --prefix=${INSTALL_DIR} \
-    --disable-static \ 
-    && make \
+    --disable-static \
+    && make -j 16 \
     && make install
 
 # Install Poppler (https://gitlab.freedesktop.org/poppler/poppler/-/tags)
+RUN yum install -y boost-devel
+RUN echo "Installing Poppler"
 
-ENV VERSION_POPPLER=21.04.0
+ENV VERSION_POPPLER=22.06.0
 ENV POPPLER_BUILD_DIR=${BUILD_DIR}/poppler
 ENV POPPLER_TEST_DIR=${BUILD_DIR}/poppler-test
 
@@ -366,8 +386,8 @@ RUN set -xe; \
     -DCMAKE_BUILD_TYPE=Release \
     -DTESTDATADIR=${POPPLER_TEST_DIR} \
     -DENABLE_UNSTABLE_API_ABI_HEADERS=ON \
-    -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \ 
+    -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
     -DCMAKE_PREFIX_PATH=${INSTALL_DIR} \
-    && make \
+    && make -j 16 \
     && make install
 
