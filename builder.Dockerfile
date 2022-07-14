@@ -1,4 +1,4 @@
-FROM amazonlinux:2018.03
+FROM amazonlinux:2022.0.20220531.0
 
 ENV SOURCE_DIR="/opt"
 ENV INSTALL_DIR="/opt"
@@ -20,13 +20,13 @@ RUN set -xe; \
     ${INSTALL_DIR}/share \
     ${INSTALL_DIR}/lib
 
-COPY --from=jeylabs/poppler/compiler:latest /lib64/libuuid.so.* ${INSTALL_DIR}/lib/
-COPY --from=jeylabs/poppler/compiler:latest ${SOURCE_DIR}/share/ /tmp/share
-COPY --from=jeylabs/poppler/compiler:latest ${SOURCE_DIR}/etc/ ${INSTALL_DIR}/etc/
-COPY --from=jeylabs/poppler/compiler:latest ${SOURCE_DIR}/bin/ ${INSTALL_DIR}/bin/
-COPY --from=jeylabs/poppler/compiler:latest ${SOURCE_DIR}/var/ ${INSTALL_DIR}/var/
-COPY --from=jeylabs/poppler/compiler:latest ${SOURCE_DIR}/lib/ ${INSTALL_DIR}/lib/
-COPY --from=jeylabs/poppler/compiler:latest ${SOURCE_DIR}/lib64/ ${INSTALL_DIR}/lib/
+COPY --from=alanjjenkins/poppler/compiler:latest /lib64/libuuid.so ${INSTALL_DIR}/lib/
+COPY --from=alanjjenkins/poppler/compiler:latest ${SOURCE_DIR}/share/ /tmp/share
+COPY --from=alanjjenkins/poppler/compiler:latest ${SOURCE_DIR}/etc/ ${INSTALL_DIR}/etc/
+COPY --from=alanjjenkins/poppler/compiler:latest ${SOURCE_DIR}/bin/ ${INSTALL_DIR}/bin/
+COPY --from=alanjjenkins/poppler/compiler:latest ${SOURCE_DIR}/var/ ${INSTALL_DIR}/var/
+COPY --from=alanjjenkins/poppler/compiler:latest ${SOURCE_DIR}/lib/ ${INSTALL_DIR}/lib/
+COPY --from=alanjjenkins/poppler/compiler:latest ${SOURCE_DIR}/lib64/ ${INSTALL_DIR}/lib/
 
 RUN set -xe; \
     cp -R /tmp/share/fontconfig ${INSTALL_DIR}/share/fontconfig
