@@ -378,6 +378,8 @@ RUN set -xe; \
 
 WORKDIR  ${POPPLER_BUILD_DIR}/bin/
 
+# Disabling boost for less file size
+
 RUN set -xe; \
     CFLAGS="" \
     CPPFLAGS="-I${INSTALL_DIR}/include  -I/usr/include" \
@@ -386,7 +388,8 @@ RUN set -xe; \
     -DCMAKE_BUILD_TYPE=Release \
     -DTESTDATADIR=${POPPLER_TEST_DIR} \
     -DENABLE_UNSTABLE_API_ABI_HEADERS=ON \
-    -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
+    -DENABLE_BOOST=OFF \
+    -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \ 
     -DCMAKE_PREFIX_PATH=${INSTALL_DIR} \
     && make -j 16 \
     && make install
