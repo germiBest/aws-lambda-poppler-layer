@@ -343,7 +343,7 @@ RUN set -xe; \
 
 # Install Poppler (https://gitlab.freedesktop.org/poppler/poppler/-/tags)
 
-ENV VERSION_POPPLER=21.04.0
+ENV VERSION_POPPLER=22.01.0
 ENV POPPLER_BUILD_DIR=${BUILD_DIR}/poppler
 ENV POPPLER_TEST_DIR=${BUILD_DIR}/poppler-test
 
@@ -366,6 +366,7 @@ RUN set -xe; \
     -DCMAKE_BUILD_TYPE=Release \
     -DTESTDATADIR=${POPPLER_TEST_DIR} \
     -DENABLE_UNSTABLE_API_ABI_HEADERS=ON \
+    -DENABLE_BOOST=OFF \
     -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \ 
     -DCMAKE_PREFIX_PATH=${INSTALL_DIR} \
     && make \
